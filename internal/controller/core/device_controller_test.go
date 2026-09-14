@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +47,12 @@ var _ = Describe("Device Controller", func() {
 			device.Name = name
 			device.Namespace = metav1.NamespaceDefault
 			Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, device))).To(Succeed())
+
+			By("Waiting for Device to be fully deleted")
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: name, Namespace: metav1.NamespaceDefault}, &v1alpha1.Device{})
+				g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
+			}).Should(Succeed())
 
 			By("Cleanup the specific resource instance Secret")
 			secret := &corev1.Secret{}

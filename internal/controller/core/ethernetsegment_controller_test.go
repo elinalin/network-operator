@@ -6,6 +6,7 @@ package core
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -17,8 +18,9 @@ var _ = Describe("EthernetSegment Controller", func() {
 	Context("When reconciling a resource", func() {
 		const esi = "00:11:22:33:44:55:66:77:88:01"
 		var (
-			name string
-			key  client.ObjectKey
+			name       string
+			key        client.ObjectKey
+			memberIntf *v1alpha1.Interface
 		)
 
 		BeforeEach(func() {
@@ -42,6 +44,19 @@ var _ = Describe("EthernetSegment Controller", func() {
 				g.Expect(k8sClient.Get(ctx, key, d)).To(Succeed())
 				g.Expect(d.Status.Phase).To(Equal(v1alpha1.DevicePhaseRunning))
 			}).Should(Succeed())
+
+			By("Creating a Physical member interface for Aggregate references")
+			memberIntf = &v1alpha1.Interface{
+				GenerateName: "test-es-member-",
+				Namespace:    metav1.NamespaceDefault,
+				Spec: v1alpha1.InterfaceSpec{
+					DeviceRef:  v1alpha1.LocalObjectReference{Name: name},
+					Name:       "Ethernet1/1",
+					AdminState: v1alpha1.AdminStateUp,
+					Type:       v1alpha1.InterfaceTypePhysical,
+				},
+			}
+			Expect(k8sClient.Create(ctx, memberIntf)).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -50,6 +65,12 @@ var _ = Describe("EthernetSegment Controller", func() {
 			es.Name = name
 			es.Namespace = metav1.NamespaceDefault
 			Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, es))).To(Succeed())
+
+			By("Waiting for EthernetSegment resource to be fully deleted")
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: name, Namespace: metav1.NamespaceDefault}, &v1alpha1.EthernetSegment{})
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+			}).Should(Succeed())
 
 			By("Verifying the EthernetSegment is removed from the provider")
 			Eventually(func(g Gomega) {
@@ -62,6 +83,12 @@ var _ = Describe("EthernetSegment Controller", func() {
 			intf.Name = name
 			intf.Namespace = metav1.NamespaceDefault
 			Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, intf))).To(Succeed())
+
+			By("Waiting for Interface resource to be fully deleted")
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: name, Namespace: metav1.NamespaceDefault}, &v1alpha1.Interface{})
+				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+			}).Should(Succeed())
 
 			By("Cleaning up the test Device resource")
 			device := &v1alpha1.Device{}
@@ -84,7 +111,7 @@ var _ = Describe("EthernetSegment Controller", func() {
 						Mode: v1alpha1.SwitchportModeTrunk,
 					},
 					Aggregation: &v1alpha1.Aggregation{
-						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: "eth1"}},
+						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: memberIntf.Name}},
 						ControlProtocol:     v1alpha1.ControlProtocol{Mode: v1alpha1.LACPModeActive},
 					},
 				},
@@ -204,7 +231,7 @@ var _ = Describe("EthernetSegment Controller", func() {
 						Mode: v1alpha1.SwitchportModeTrunk,
 					},
 					Aggregation: &v1alpha1.Aggregation{
-						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: "eth1"}},
+						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: memberIntf.Name}},
 						ControlProtocol:     v1alpha1.ControlProtocol{Mode: v1alpha1.LACPModeActive},
 					},
 				},
@@ -299,7 +326,7 @@ var _ = Describe("EthernetSegment Controller", func() {
 					Type:       v1alpha1.InterfaceTypeAggregate,
 					AdminState: v1alpha1.AdminStateUp,
 					Aggregation: &v1alpha1.Aggregation{
-						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: "eth1"}},
+						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: memberIntf.Name}},
 						ControlProtocol:     v1alpha1.ControlProtocol{Mode: v1alpha1.LACPModeActive},
 					},
 				},
@@ -349,7 +376,7 @@ var _ = Describe("EthernetSegment Controller", func() {
 						Mode: v1alpha1.SwitchportModeTrunk,
 					},
 					Aggregation: &v1alpha1.Aggregation{
-						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: "eth1"}},
+						MemberInterfaceRefs: []v1alpha1.LocalObjectReference{{Name: memberIntf.Name}},
 						ControlProtocol:     v1alpha1.ControlProtocol{Mode: v1alpha1.LACPModeActive},
 					},
 				},
