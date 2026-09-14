@@ -404,7 +404,7 @@ func (r *FabricReconciler) reconcileSystemLoopbacks(ctx context.Context, fabric 
 	// Range by index only — list.Items are value types; using the second loop
 	// variable would copy the entire struct on each iteration.
 	for i := range devices.Items {
-		claimName := fmt.Sprintf("%s-%s-lo%d", fabric.Name, devices.Items[i].Name, LoopbackRouterID)
+		claimName := fmt.Sprintf("%s-lo%d", devices.Items[i].Name, LoopbackRouterID)
 		claim, err := r.reconcileLoopbackClaim(ctx, fabric, claimName)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -433,7 +433,7 @@ func (r *FabricReconciler) reconcileVTEPLoopbacks(ctx context.Context, fabric *e
 	slices.SortFunc(devices.Items, func(a, b v1alpha1.Device) int { return cmp.Compare(a.Name, b.Name) })
 	for i := range devices.Items {
 		for _, id := range []int{LoopbackVTEP, LoopbackVTEPAnycast} {
-			claimName := fmt.Sprintf("%s-%s-lo%d", fabric.Name, devices.Items[i].Name, id)
+			claimName := fmt.Sprintf("%s-lo%d", devices.Items[i].Name, id)
 			claim, err := r.reconcileLoopbackClaim(ctx, fabric, claimName)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -458,7 +458,7 @@ func (r *FabricReconciler) reconcileAnycastRPLoopbacks(ctx context.Context, fabr
 		return ctrl.Result{}, nil
 	}
 	for _, rp := range fabric.Spec.BUM.PIM.AnycastRendezvousPoints {
-		claimName := fmt.Sprintf("%s-%s-lo%d", fabric.Name, rp.Name, LoopbackAnycastRP)
+		claimName := fmt.Sprintf("%s-lo%d", rp.Name, LoopbackAnycastRP)
 		claim, err := r.reconcileLoopbackClaim(ctx, fabric, claimName)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -533,7 +533,7 @@ func (r *FabricReconciler) reconcileLoopbackInterface(ctx context.Context, fabri
 		return nil, reconcile.TerminalError(fmt.Errorf("resolving loopback interface name for id %d: %w", loopbackID, err))
 	}
 
-	name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, loopbackID)
+	name := fmt.Sprintf("%s-lo%d", device.Name, loopbackID)
 	intf := &v1alpha1.Interface{
 		Name:      name,
 		Namespace: fabric.Namespace,
@@ -612,7 +612,7 @@ func (r *FabricReconciler) reconcileUnderlayLinks(ctx context.Context, fabric *e
 		var err error
 		switch {
 		case fabric.Spec.Underlay.Addressing.Unnumbered:
-			err = r.reconcileUnderlayInterfaceUnnumbered(ctx, fabric, intf)
+			err = r.reconcileUnderlayInterfaceUnnumbered(ctx, intf)
 		case fabric.Spec.Underlay.Addressing.IPPrefixPoolRef != nil:
 			err = r.reconcileUnderlayInterfaceNumbered(ctx, fabric, intf)
 		}
@@ -625,13 +625,13 @@ func (r *FabricReconciler) reconcileUnderlayLinks(ctx context.Context, fabric *e
 
 // reconcileUnderlayInterfaceUnnumbered patches the interface to borrow the IPv4 address
 // from the device's lo0 interface created by reconcileSystemLoopbacks.
-func (r *FabricReconciler) reconcileUnderlayInterfaceUnnumbered(ctx context.Context, fabric *evpnv1alpha1.Fabric, intf *v1alpha1.Interface) error {
+func (r *FabricReconciler) reconcileUnderlayInterfaceUnnumbered(ctx context.Context, intf *v1alpha1.Interface) error {
 	orig := intf.DeepCopy()
 	intf.Spec.MTU = 9216
 	intf.Spec.IPv4 = &v1alpha1.InterfaceIPv4{
 		Unnumbered: &v1alpha1.InterfaceIPv4Unnumbered{
 			InterfaceRef: v1alpha1.LocalObjectReference{
-				Name: fmt.Sprintf("%s-%s-lo0", fabric.Name, intf.Spec.DeviceRef.Name),
+				Name: intf.Spec.DeviceRef.Name + "-lo0",
 			},
 		},
 	}
@@ -659,7 +659,7 @@ func (r *FabricReconciler) reconcileUnderlayInterfaceNumbered(ctx context.Contex
 
 	// Stable claim name: sort the two interface names so both ends agree.
 	a, b := intf.Name, peerName
-	claimName := fmt.Sprintf("%s-%s-%s-p2p", fabric.Name, min(a, b), max(a, b))
+	claimName := fmt.Sprintf("%s-%s-p2p", min(a, b), max(a, b))
 
 	claim, err := r.reconcileUnderlayPrefixClaim(ctx, fabric, claimName)
 	if err != nil {
@@ -749,7 +749,7 @@ func (r *FabricReconciler) reconcileUnderlayIGP(ctx context.Context, fabric *evp
 		slices.SortFunc(loopbacks, func(a, b *v1alpha1.Interface) int { return cmp.Compare(a.Name, b.Name) })
 		slices.SortFunc(uplinks, func(a, b *v1alpha1.Interface) int { return cmp.Compare(a.Name, b.Name) })
 
-		lo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackRouterID)
+		lo0Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackRouterID)
 
 		idx := slices.IndexFunc(loopbacks, func(intf *v1alpha1.Interface) bool { return intf.Name == lo0Name })
 		if idx < 0 {
@@ -763,7 +763,7 @@ func (r *FabricReconciler) reconcileUnderlayIGP(ctx context.Context, fabric *evp
 		}
 
 		routerID := lo0.Spec.IPv4.Addresses[0].Addr().String()
-		name := fmt.Sprintf("%s-%s-underlay", fabric.Name, device.Name)
+		name := device.Name + "-underlay"
 
 		switch fabric.Spec.Underlay.Protocol {
 		case evpnv1alpha1.UnderlayProtocolOSPF:
@@ -906,7 +906,7 @@ func (r *FabricReconciler) reconcileOverlayBGP(ctx context.Context, fabric *evpn
 
 	for i := range devices.Items {
 		device := &devices.Items[i]
-		lo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackRouterID)
+		lo0Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackRouterID)
 
 		loopbacks := state.loopbacks[device.Name]
 		idx := slices.IndexFunc(loopbacks, func(intf *v1alpha1.Interface) bool { return intf.Name == lo0Name })
@@ -921,7 +921,7 @@ func (r *FabricReconciler) reconcileOverlayBGP(ctx context.Context, fabric *evpn
 		}
 
 		routerID := lo0.Spec.IPv4.Addresses[0].Addr().String()
-		name := fmt.Sprintf("%s-%s-overlay", fabric.Name, device.Name)
+		name := device.Name + "-overlay"
 
 		if err := r.reconcileBGP(ctx, device, fabric, name, routerID); err != nil {
 			return ctrl.Result{}, err
@@ -1028,7 +1028,7 @@ func (r *FabricReconciler) reconcileBGP(ctx context.Context, device *v1alpha1.De
 // If rrClient is true, the remote device is marked as a route-reflector client of the local device.
 func (r *FabricReconciler) reconcileBGPPeer(ctx context.Context, local, remote *v1alpha1.Device, fabric *evpnv1alpha1.Fabric, state *ReconcileState, rrClient bool) error {
 	// Resolve remote lo0 address for the peer address.
-	remoteLo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, remote.Name, LoopbackRouterID)
+	remoteLo0Name := fmt.Sprintf("%s-lo%d", remote.Name, LoopbackRouterID)
 	remoteLoopbacks := state.loopbacks[remote.Name]
 
 	idx := slices.IndexFunc(remoteLoopbacks, func(intf *v1alpha1.Interface) bool { return intf.Name == remoteLo0Name })
@@ -1043,8 +1043,8 @@ func (r *FabricReconciler) reconcileBGPPeer(ctx context.Context, local, remote *
 	}
 
 	peerAddr := remoteLo0.Spec.IPv4.Addresses[0].Addr().String()
-	localLo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, local.Name, LoopbackRouterID)
-	name := fmt.Sprintf("%s-%s-%s", fabric.Name, local.Name, remote.Name)
+	localLo0Name := fmt.Sprintf("%s-lo%d", local.Name, LoopbackRouterID)
+	name := fmt.Sprintf("%s-%s", local.Name, remote.Name)
 
 	peer := &v1alpha1.BGPPeer{
 		Name:      name,
@@ -1057,7 +1057,7 @@ func (r *FabricReconciler) reconcileBGPPeer(ctx context.Context, local, remote *
 		peer.Labels[evpnv1alpha1.FabricLabel] = fabric.Name
 		peer.Spec.DeviceRef = v1alpha1.LocalObjectReference{Name: local.Name}
 		peer.Spec.AdminState = v1alpha1.AdminStateUp
-		peer.Spec.BgpRef = v1alpha1.LocalObjectReference{Name: fmt.Sprintf("%s-%s-overlay", fabric.Name, local.Name)}
+		peer.Spec.BgpRef = v1alpha1.LocalObjectReference{Name: local.Name + "-overlay"}
 		peer.Spec.Address = peerAddr
 		peer.Spec.ASNumber = fabric.Spec.Overlay.IBGP.ASNumber
 		peer.Spec.LocalAddress = &v1alpha1.BGPPeerLocalAddress{
@@ -1118,7 +1118,7 @@ func (r *FabricReconciler) reconcileMulticastPIM(ctx context.Context, fabric *ev
 			continue
 		}
 
-		lo100Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, rpDevices.Items[0].Name, LoopbackAnycastRP)
+		lo100Name := fmt.Sprintf("%s-lo%d", rpDevices.Items[0].Name, LoopbackAnycastRP)
 		loopbacks := state.loopbacks[rpDevices.Items[0].Name]
 
 		lo100Idx := slices.IndexFunc(loopbacks, func(intf *v1alpha1.Interface) bool { return intf.Name == lo100Name })
@@ -1137,7 +1137,7 @@ func (r *FabricReconciler) reconcileMulticastPIM(ctx context.Context, fabric *ev
 		// Collect lo0 IPs of all RP devices for anycastAddresses.
 		rpLo0Addrs := make([]string, 0, len(rpDevices.Items))
 		for i := range rpDevices.Items {
-			lo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, rpDevices.Items[i].Name, LoopbackRouterID)
+			lo0Name := fmt.Sprintf("%s-lo%d", rpDevices.Items[i].Name, LoopbackRouterID)
 			loopbacks := state.loopbacks[rpDevices.Items[i].Name]
 
 			lo0Idx := slices.IndexFunc(loopbacks, func(intf *v1alpha1.Interface) bool { return intf.Name == lo0Name })
@@ -1158,8 +1158,8 @@ func (r *FabricReconciler) reconcileMulticastPIM(ctx context.Context, fabric *ev
 		for i := range rpDevices.Items {
 			device := &rpDevices.Items[i]
 
-			lo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackRouterID)
-			lo100Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackAnycastRP)
+			lo0Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackRouterID)
+			lo100Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackAnycastRP)
 			interfaces := state.loopbacks[device.Name]
 
 			idx := slices.IndexFunc(interfaces, func(intf *v1alpha1.Interface) bool { return intf.Name == lo0Name })
@@ -1207,8 +1207,8 @@ func (r *FabricReconciler) reconcileMulticastPIM(ctx context.Context, fabric *ev
 			})
 
 			// Interface refs for client: lo0, lo1 (VTEP), uplinks.
-			lo0Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackRouterID)
-			lo1Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackVTEP)
+			lo0Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackRouterID)
+			lo1Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackVTEP)
 			interfaceRefs[device.Name] = append(
 				interfaceRefs[device.Name],
 				v1alpha1.PIMInterface{Name: lo0Name, Mode: v1alpha1.PIMModeSparse},
@@ -1235,7 +1235,7 @@ func (r *FabricReconciler) reconcileMulticastPIM(ctx context.Context, fabric *ev
 
 // reconcilePIM creates or updates the PIM resource for a fabric device.
 func (r *FabricReconciler) reconcilePIM(ctx context.Context, deviceName string, fabric *evpnv1alpha1.Fabric, rps []v1alpha1.RendezvousPoint, refs []v1alpha1.PIMInterface) error {
-	name := fmt.Sprintf("%s-%s-multicast", fabric.Name, deviceName)
+	name := deviceName + "-multicast"
 
 	// Deduplicate interface refs (a device in multiple RP groups gets duplicates) and sort.
 	seen := sets.New[string]()
@@ -1288,8 +1288,8 @@ func (r *FabricReconciler) reconcileVTEPNVE(ctx context.Context, fabric *evpnv1a
 	for i := range devices.Items {
 		device := &devices.Items[i]
 
-		lo1Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackVTEP)
-		lo2Name := fmt.Sprintf("%s-%s-lo%d", fabric.Name, device.Name, LoopbackVTEPAnycast)
+		lo1Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackVTEP)
+		lo2Name := fmt.Sprintf("%s-lo%d", device.Name, LoopbackVTEPAnycast)
 
 		// Skip if lo1 is not yet allocated.
 		loopbacks := state.loopbacks[device.Name]
@@ -1307,7 +1307,7 @@ func (r *FabricReconciler) reconcileVTEPNVE(ctx context.Context, fabric *evpnv1a
 
 // reconcileNVE creates or updates the NetworkVirtualizationEdge resource for a VTEP device.
 func (r *FabricReconciler) reconcileNVE(ctx context.Context, device *v1alpha1.Device, fabric *evpnv1alpha1.Fabric, lo1Name, lo2Name string) error {
-	name := fmt.Sprintf("%s-%s-nve", fabric.Name, device.Name)
+	name := device.Name + "-nve"
 
 	nve := &v1alpha1.NetworkVirtualizationEdge{
 		Name:      name,

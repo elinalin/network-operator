@@ -3516,7 +3516,7 @@ func (p *Provider) EnsureNVE(ctx context.Context, req *provider.NVERequest) erro
 	return p.Do(ctx, sb)
 }
 
-func (p *Provider) DeleteNVE(ctx context.Context, req *provider.NVERequest) error {
+func (p *Provider) DeleteNVE(ctx context.Context, _ *provider.NVERequest) error {
 	v := new(NVE)
 	iv := new(NVEInfraVLANs)
 	av := new(FabricFwd)

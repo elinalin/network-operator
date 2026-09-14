@@ -215,7 +215,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, d := range []*corev1alpha1.Device{spine1, spine2, leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					claim := &poolv1alpha1.Claim{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
 					g.Expect(claim.Spec.PoolRef.Name).To(Equal(loopbackPool.Name))
 					g.Expect(claim.Spec.PoolRef.Kind).To(Equal("IPAddressPool"))
 					g.Expect(claim.OwnerReferences).To(ContainElement(
@@ -232,7 +232,7 @@ var _ = Describe("Fabric Controller", func() {
 			Eventually(func(g Gomega) {
 				for i, d := range []*corev1alpha1.Device{leaf1, leaf2, spine1, spine2} {
 					claim := &poolv1alpha1.Claim{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
 					g.Expect(claim.Status.Value).To(Equal(fmt.Sprintf("10.0.0.%d", i)))
 				}
 			}).Should(Succeed())
@@ -242,7 +242,7 @@ var _ = Describe("Fabric Controller", func() {
 				for _, id := range []string{"lo1", "lo2"} {
 					Eventually(func(g Gomega) {
 						claim := &poolv1alpha1.Claim{}
-						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-" + id, Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
+						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-" + id, Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
 					}).Should(Succeed())
 				}
 			}
@@ -250,14 +250,14 @@ var _ = Describe("Fabric Controller", func() {
 			By("Verifying a single lo100 Claim is created for the spine-rp RP group")
 			Eventually(func(g Gomega) {
 				claim := &poolv1alpha1.Claim{}
-				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-spine-rp-lo100", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: "spine-rp-lo100", Namespace: metav1.NamespaceDefault}, claim)).To(Succeed())
 			}).Should(Succeed())
 
 			By("Verifying lo0 Interfaces are created for all 4 fabric devices once Claims are allocated")
 			for _, d := range []*corev1alpha1.Device{spine1, spine2, leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					intf := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
 					g.Expect(intf.Spec.Type).To(Equal(corev1alpha1.InterfaceTypeLoopback))
 					g.Expect(intf.Spec.DeviceRef.Name).To(Equal(d.Name))
 					g.Expect(intf.Spec.Name).To(Equal("Loopback0"))
@@ -274,7 +274,7 @@ var _ = Describe("Fabric Controller", func() {
 					descriptions := []string{"Primary VTEP", "VTEP Anycast"}
 					Eventually(func(g Gomega) {
 						intf := &corev1alpha1.Interface{}
-						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-" + id, Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
+						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-" + id, Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
 						g.Expect(intf.Spec.Type).To(Equal(corev1alpha1.InterfaceTypeLoopback))
 						g.Expect(intf.Spec.DeviceRef.Name).To(Equal(d.Name))
 						g.Expect(intf.Spec.Name).To(Equal("Loopback" + id[2:]))
@@ -290,7 +290,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, d := range []*corev1alpha1.Device{spine1, spine2} {
 				Eventually(func(g Gomega) {
 					intf := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo100", Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo100", Namespace: metav1.NamespaceDefault}, intf)).To(Succeed())
 					g.Expect(intf.Spec.Type).To(Equal(corev1alpha1.InterfaceTypeLoopback))
 					g.Expect(intf.Spec.DeviceRef.Name).To(Equal(d.Name))
 					g.Expect(intf.Spec.Name).To(Equal("Loopback100"))
@@ -309,7 +309,7 @@ var _ = Describe("Fabric Controller", func() {
 					g.Expect(i.Spec.MTU).To(Equal(int32(9216)))
 					g.Expect(i.Spec.IPv4).NotTo(BeNil())
 					g.Expect(i.Spec.IPv4.Unnumbered).NotTo(BeNil())
-					g.Expect(i.Spec.IPv4.Unnumbered.InterfaceRef.Name).To(Equal(fabric.Name + "-" + i.Spec.DeviceRef.Name + "-lo0"))
+					g.Expect(i.Spec.IPv4.Unnumbered.InterfaceRef.Name).To(Equal(i.Spec.DeviceRef.Name + "-lo0"))
 				}).Should(Succeed())
 			}
 
@@ -321,7 +321,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, d := range []*corev1alpha1.Device{spine1, spine2, leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					ospf := &corev1alpha1.OSPF{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-underlay", Namespace: metav1.NamespaceDefault}, ospf)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-underlay", Namespace: metav1.NamespaceDefault}, ospf)).To(Succeed())
 					g.Expect(ospf.Spec.DeviceRef.Name).To(Equal(d.Name))
 					g.Expect(ospf.Spec.Instance).To(Equal("UNDERLAY"))
 					g.Expect(ospf.Spec.AdminState).To(Equal(corev1alpha1.AdminStateUp))
@@ -329,14 +329,14 @@ var _ = Describe("Fabric Controller", func() {
 
 					// RouterID should match the lo0 address of this device.
 					lo0 := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
 					g.Expect(lo0.Spec.IPv4).NotTo(BeNil())
 					g.Expect(lo0.Spec.IPv4.Addresses).To(HaveLen(1))
 					g.Expect(ospf.Spec.RouterID).To(Equal(lo0.Spec.IPv4.Addresses[0].Addr().String()))
 
 					// lo0 must be present, area 0.0.0.0, passive=true.
 					g.Expect(ospf.Spec.InterfaceRefs).To(ContainElement(SatisfyAll(
-						HaveField("LocalObjectReference.Name", fabric.Name+"-"+d.Name+"-lo0"),
+						HaveField("LocalObjectReference.Name", d.Name+"-lo0"),
 						HaveField("Area", "0.0.0.0"),
 						HaveField("Passive", HaveValue(BeTrue())),
 					)))
@@ -362,14 +362,14 @@ var _ = Describe("Fabric Controller", func() {
 			for _, d := range []*corev1alpha1.Device{spine1, spine2, leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					bgp := &corev1alpha1.BGP{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-overlay", Namespace: metav1.NamespaceDefault}, bgp)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-overlay", Namespace: metav1.NamespaceDefault}, bgp)).To(Succeed())
 					g.Expect(bgp.Spec.DeviceRef.Name).To(Equal(d.Name))
 					g.Expect(bgp.Spec.ASNumber).To(Equal(intstr.FromInt(65000)))
 					g.Expect(bgp.Spec.AdminState).To(Equal(corev1alpha1.AdminStateUp))
 
 					// RouterID should match the lo0 address of this device.
 					lo0 := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
 					g.Expect(lo0.Spec.IPv4).NotTo(BeNil())
 					g.Expect(bgp.Spec.RouterID).To(Equal(lo0.Spec.IPv4.Addresses[0].Addr().String()))
 
@@ -395,18 +395,18 @@ var _ = Describe("Fabric Controller", func() {
 					Eventually(func(g Gomega) {
 						peer := &corev1alpha1.BGPPeer{}
 						g.Expect(k8sClient.Get(ctx, client.ObjectKey{
-							Name:      fabric.Name + "-" + spine.Name + "-" + leaf.Name,
+							Name:      spine.Name + "-" + leaf.Name,
 							Namespace: metav1.NamespaceDefault,
 						}, peer)).To(Succeed())
 						g.Expect(peer.Spec.DeviceRef.Name).To(Equal(spine.Name))
-						g.Expect(peer.Spec.BgpRef.Name).To(Equal(fabric.Name + "-" + spine.Name + "-overlay"))
+						g.Expect(peer.Spec.BgpRef.Name).To(Equal(spine.Name + "-overlay"))
 						g.Expect(peer.Spec.ASNumber).To(Equal(intstr.FromInt(65000)))
 						g.Expect(peer.Spec.LocalAddress).NotTo(BeNil())
-						g.Expect(peer.Spec.LocalAddress.InterfaceRef.Name).To(Equal(fabric.Name + "-" + spine.Name + "-lo0"))
+						g.Expect(peer.Spec.LocalAddress.InterfaceRef.Name).To(Equal(spine.Name + "-lo0"))
 
 						// Peer address should match the leaf's lo0 address.
 						leafLo0 := &corev1alpha1.Interface{}
-						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + leaf.Name + "-lo0", Namespace: metav1.NamespaceDefault}, leafLo0)).To(Succeed())
+						g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: leaf.Name + "-lo0", Namespace: metav1.NamespaceDefault}, leafLo0)).To(Succeed())
 						g.Expect(peer.Spec.Address).To(Equal(leafLo0.Spec.IPv4.Addresses[0].Addr().String()))
 
 						g.Expect(peer.Spec.AddressFamilies).NotTo(BeNil())
@@ -420,11 +420,11 @@ var _ = Describe("Fabric Controller", func() {
 					Eventually(func(g Gomega) {
 						peer := &corev1alpha1.BGPPeer{}
 						g.Expect(k8sClient.Get(ctx, client.ObjectKey{
-							Name:      fabric.Name + "-" + leaf.Name + "-" + spine.Name,
+							Name:      leaf.Name + "-" + spine.Name,
 							Namespace: metav1.NamespaceDefault,
 						}, peer)).To(Succeed())
 						g.Expect(peer.Spec.DeviceRef.Name).To(Equal(leaf.Name))
-						g.Expect(peer.Spec.BgpRef.Name).To(Equal(fabric.Name + "-" + leaf.Name + "-overlay"))
+						g.Expect(peer.Spec.BgpRef.Name).To(Equal(leaf.Name + "-overlay"))
 
 						g.Expect(peer.Spec.AddressFamilies).NotTo(BeNil())
 						g.Expect(peer.Spec.AddressFamilies.L2vpnEvpn).NotTo(BeNil())
@@ -437,7 +437,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, spine := range []*corev1alpha1.Device{spine1, spine2} {
 				Eventually(func(g Gomega) {
 					pim := &corev1alpha1.PIM{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + spine.Name + "-multicast", Namespace: metav1.NamespaceDefault}, pim)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: spine.Name + "-multicast", Namespace: metav1.NamespaceDefault}, pim)).To(Succeed())
 					g.Expect(pim.Spec.DeviceRef.Name).To(Equal(spine.Name))
 					g.Expect(pim.Spec.AdminState).To(Equal(corev1alpha1.AdminStateUp))
 
@@ -447,7 +447,7 @@ var _ = Describe("Fabric Controller", func() {
 
 					// Anycast IP is the lo100 address.
 					lo100 := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + spine.Name + "-lo100", Namespace: metav1.NamespaceDefault}, lo100)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: spine.Name + "-lo100", Namespace: metav1.NamespaceDefault}, lo100)).To(Succeed())
 					g.Expect(lo100.Spec.IPv4).NotTo(BeNil())
 					g.Expect(rp.Address).To(Equal(lo100.Spec.IPv4.Addresses[0].Addr().String()))
 
@@ -458,8 +458,8 @@ var _ = Describe("Fabric Controller", func() {
 					g.Expect(rp.AnycastAddresses).To(HaveLen(1))
 
 					// Interface refs should include lo0, lo100, and the uplink.
-					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", fabric.Name+"-"+spine.Name+"-lo0")))
-					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", fabric.Name+"-"+spine.Name+"-lo100")))
+					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", spine.Name+"-lo0")))
+					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", spine.Name+"-lo100")))
 
 					g.Expect(pim.OwnerReferences).To(ContainElement(SatisfyAll(
 						HaveField("Kind", "Fabric"),
@@ -473,7 +473,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, leaf := range []*corev1alpha1.Device{leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					pim := &corev1alpha1.PIM{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + leaf.Name + "-multicast", Namespace: metav1.NamespaceDefault}, pim)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: leaf.Name + "-multicast", Namespace: metav1.NamespaceDefault}, pim)).To(Succeed())
 					g.Expect(pim.Spec.DeviceRef.Name).To(Equal(leaf.Name))
 
 					g.Expect(pim.Spec.RendezvousPoints).To(HaveLen(1))
@@ -487,8 +487,8 @@ var _ = Describe("Fabric Controller", func() {
 					g.Expect(rp.AnycastAddresses).To(BeEmpty())
 
 					// Interface refs should include lo0, lo1 (VTEP).
-					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", fabric.Name+"-"+leaf.Name+"-lo0")))
-					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", fabric.Name+"-"+leaf.Name+"-lo1")))
+					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", leaf.Name+"-lo0")))
+					g.Expect(pim.Spec.InterfaceRefs).To(ContainElement(HaveField("Name", leaf.Name+"-lo1")))
 				}).Should(Succeed())
 			}
 
@@ -496,14 +496,14 @@ var _ = Describe("Fabric Controller", func() {
 			for _, leaf := range []*corev1alpha1.Device{leaf1, leaf2} {
 				Eventually(func(g Gomega) {
 					nve := &corev1alpha1.NetworkVirtualizationEdge{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + leaf.Name + "-nve", Namespace: metav1.NamespaceDefault}, nve)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: leaf.Name + "-nve", Namespace: metav1.NamespaceDefault}, nve)).To(Succeed())
 					g.Expect(nve.Spec.DeviceRef.Name).To(Equal(leaf.Name))
 					g.Expect(nve.Spec.AdminState).To(Equal(corev1alpha1.AdminStateUp))
 					g.Expect(nve.Spec.HostReachability).To(Equal(corev1alpha1.HostReachabilityTypeBGP))
 					g.Expect(nve.Spec.SuppressARP).To(BeTrue())
-					g.Expect(nve.Spec.SourceInterfaceRef.Name).To(Equal(fabric.Name + "-" + leaf.Name + "-lo1"))
+					g.Expect(nve.Spec.SourceInterfaceRef.Name).To(Equal(leaf.Name + "-lo1"))
 					g.Expect(nve.Spec.AnycastSourceInterfaceRef).NotTo(BeNil())
-					g.Expect(nve.Spec.AnycastSourceInterfaceRef.Name).To(Equal(fabric.Name + "-" + leaf.Name + "-lo2"))
+					g.Expect(nve.Spec.AnycastSourceInterfaceRef.Name).To(Equal(leaf.Name + "-lo2"))
 
 					g.Expect(nve.OwnerReferences).To(ContainElement(SatisfyAll(
 						HaveField("Kind", "Fabric"),
@@ -709,7 +709,7 @@ var _ = Describe("Fabric Controller", func() {
 			})
 
 			// Stable claim name: alphabetically sorted interface names.
-			claimName := fabric.Name + "-" + min(spineIntf.Name, leafIntf.Name) + "-" + max(spineIntf.Name, leafIntf.Name) + "-p2p"
+			claimName := min(spineIntf.Name, leafIntf.Name) + "-" + max(spineIntf.Name, leafIntf.Name) + "-p2p"
 
 			By("Verifying a single p2p Claim is created for the link")
 			Eventually(func(g Gomega) {
@@ -906,7 +906,7 @@ var _ = Describe("Fabric Controller", func() {
 			for _, d := range []*corev1alpha1.Device{spine1, leaf1} {
 				Eventually(func(g Gomega) {
 					isis := &corev1alpha1.ISIS{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-underlay", Namespace: metav1.NamespaceDefault}, isis)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-underlay", Namespace: metav1.NamespaceDefault}, isis)).To(Succeed())
 					g.Expect(isis.Spec.DeviceRef.Name).To(Equal(d.Name))
 					g.Expect(isis.Spec.Instance).To(Equal("UNDERLAY"))
 					g.Expect(isis.Spec.AdminState).To(Equal(corev1alpha1.AdminStateUp))
@@ -916,7 +916,7 @@ var _ = Describe("Fabric Controller", func() {
 
 					// NET must be derivable from the lo0 address using the documented padding scheme.
 					lo0 := &corev1alpha1.Interface{}
-					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: fabric.Name + "-" + d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Name: d.Name + "-lo0", Namespace: metav1.NamespaceDefault}, lo0)).To(Succeed())
 					g.Expect(lo0.Spec.IPv4).NotTo(BeNil())
 					g.Expect(lo0.Spec.IPv4.Addresses).To(HaveLen(1))
 					expectedNET, err := isisNETFromIPv4(lo0.Spec.IPv4.Addresses[0].Addr().String())
@@ -924,7 +924,7 @@ var _ = Describe("Fabric Controller", func() {
 					g.Expect(isis.Spec.NetworkEntityTitle).To(Equal(expectedNET))
 
 					// lo0 and the device's uplink must be present in InterfaceRefs.
-					g.Expect(isis.Spec.InterfaceRefs).To(ContainElement(corev1alpha1.LocalObjectReference{Name: fabric.Name + "-" + d.Name + "-lo0"}))
+					g.Expect(isis.Spec.InterfaceRefs).To(ContainElement(corev1alpha1.LocalObjectReference{Name: d.Name + "-lo0"}))
 					g.Expect(isis.Spec.InterfaceRefs).To(ContainElement(corev1alpha1.LocalObjectReference{Name: deviceUplinks[d.Name].Name}))
 
 					g.Expect(isis.OwnerReferences).To(ContainElement(SatisfyAll(
