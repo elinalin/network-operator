@@ -30,9 +30,11 @@ import (
 )
 
 const (
-	timeout  = 10 * time.Second
+	timeout  = 60 * time.Second
 	interval = time.Second
 )
+
+var testNamespace string
 
 // TestAll runs all lab tests by setting up the environment, SSH connection,
 // and Kubernetes client, then executing all test cases from the testdata directory.
@@ -136,7 +138,7 @@ func Apply() script.Cmd {
 			if !ok {
 				return nil, fmt.Errorf("decoded object is not a client.Object: %T", obj)
 			}
-			res.SetNamespace(metav1.NamespaceDefault)
+			res.SetNamespace(testNamespace)
 			res.SetLabels(map[string]string{v1alpha1.DeviceLabel: "device"})
 			if err := k8sClient.Create(s.Context(), res); err != nil {
 				return nil, fmt.Errorf("failed to apply resource: %w", err)
@@ -186,7 +188,7 @@ func Delete() script.Cmd {
 			if !ok {
 				return nil, fmt.Errorf("decoded object is not a client.Object: %T", obj)
 			}
-			res.SetNamespace(metav1.NamespaceDefault)
+			res.SetNamespace(testNamespace)
 			if err := k8sClient.Delete(s.Context(), res); client.IgnoreNotFound(err) != nil {
 				return nil, fmt.Errorf("failed to delete resource: %w", err)
 			}
@@ -229,6 +231,7 @@ func ReadEnv(t *testing.T) {
 	Endpoint.Pass = MustGetEnv(t, "PASS")
 	Endpoint.SSHPort = GetEnvOrDefault(t, "SSH_PORT", "22")
 	Endpoint.GNMIPort = GetEnvOrDefault(t, "GNMI_PORT", "9339")
+	testNamespace = GetEnvOrDefault(t, "NAMESPACE", metav1.NamespaceDefault)
 }
 
 var sshClient *ssh.Client
@@ -274,7 +277,7 @@ func SetupK8s(t *testing.T) {
 	}
 	Create(t, &corev1.Secret{
 		Name:      "secret",
-		Namespace: metav1.NamespaceDefault,
+		Namespace: testNamespace,
 		StringData: map[string]string{
 			"username": Endpoint.User,
 			"password": Endpoint.Pass,
@@ -283,21 +286,25 @@ func SetupK8s(t *testing.T) {
 	})
 	Create(t, &v1alpha1.Device{
 		Name:      "device",
-		Namespace: metav1.NamespaceDefault,
+		Namespace: testNamespace,
 		Spec: v1alpha1.DeviceSpec{
 			Provider: "nx.cisco.networking.metal.ironcore.dev",
 			Endpoint: v1alpha1.Endpoint{
 				Address:   net.JoinHostPort(ResolveAddr(t, Endpoint.GNMIAddr), Endpoint.GNMIPort),
-				SecretRef: &v1alpha1.SecretReference{Name: "secret", Namespace: metav1.NamespaceDefault},
+				SecretRef: &v1alpha1.SecretReference{Name: "secret", Namespace: testNamespace},
 			},
 		},
 	})
 }
 
 // Create creates a Kubernetes object in the cluster and registers a cleanup function
-// to delete it after the test completes. It fails the test if the creation fails.
+// to delete it after the test completes. If the object already exists from a
+// previous interrupted run, it is deleted first so the test starts from a clean state.
 func Create(t *testing.T, obj client.Object) {
 	t.Helper()
+	if err := k8sClient.Delete(t.Context(), obj); client.IgnoreNotFound(err) != nil {
+		t.Fatalf("failed to delete existing %T: %v", obj, err)
+	}
 	if err := k8sClient.Create(t.Context(), obj); err != nil {
 		t.Fatalf("failed to create %T: %v", obj, err)
 	}

@@ -4,6 +4,9 @@
 # - The global BGP instance and ownership marker appear after apply
 # - Both are fully removed after deletion (no residual config)
 
+? vty show running-config bgp
+! stdout 'router bgp'
+
 apply bgp.yaml
 sleep 30s
 vty show running-config bgp
