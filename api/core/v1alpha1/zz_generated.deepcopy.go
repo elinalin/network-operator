@@ -1643,6 +1643,11 @@ func (in *DHCPRelaySpec) DeepCopyInto(out *DHCPRelaySpec) {
 		*out = new(TypedLocalObjectReference)
 		**out = **in
 	}
+	if in.InterfaceRef != nil {
+		in, out := &in.InterfaceRef, &out.InterfaceRef
+		*out = new(LocalObjectReference)
+		**out = **in
+	}
 	if in.VrfRef != nil {
 		in, out := &in.VrfRef, &out.VrfRef
 		*out = new(LocalObjectReference)
@@ -1679,11 +1684,6 @@ func (in *DHCPRelayStatus) DeepCopyInto(out *DHCPRelayStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
-	}
-	if in.ConfiguredInterfaces != nil {
-		in, out := &in.ConfiguredInterfaces, &out.ConfiguredInterfaces
-		*out = make([]string, len(*in))
-		copy(*out, *in)
 	}
 }
 
@@ -2047,6 +2047,11 @@ func (in *EVPNInstanceSpec) DeepCopyInto(out *EVPNInstanceSpec) {
 	if in.VRFRef != nil {
 		in, out := &in.VRFRef, &out.VRFRef
 		*out = new(LocalObjectReference)
+		**out = **in
+	}
+	if in.SuppressARP != nil {
+		in, out := &in.SuppressARP, &out.SuppressARP
+		*out = new(bool)
 		**out = **in
 	}
 }

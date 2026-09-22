@@ -99,6 +99,9 @@ k8s_resource(new_name='dns', objects=['dns:dns'], trigger_mode=TRIGGER_MODE_MANU
 k8s_yaml('./config/samples/v1alpha1_ntp.yaml')
 k8s_resource(new_name='ntp', objects=['ntp:ntp'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
 
+k8s_yaml('./config/samples/nokia/srlinux/v1alpha1_ntp.yaml')
+k8s_resource(new_name='ntp-srlinux', objects=['ntp-srlinux:ntp'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['srlinux'])
+
 k8s_yaml('./config/samples/v1alpha1_acl.yaml')
 k8s_resource(new_name='acl', objects=['acl:accesscontrollist'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
 
@@ -173,7 +176,13 @@ k8s_resource(new_name='lldp', objects=['leaf1-lldp:lldp'], trigger_mode=TRIGGER_
 # k8s_resource(new_name='lldpconfig', objects=['leaf1-lldpconfig:lldpconfig'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
 
 k8s_yaml('./config/samples/v1alpha1_dhcprelay.yaml')
-k8s_resource(new_name='dhcprelay', objects=['dhcprelay:dhcprelay'], resource_deps=['eth1-1'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-vrf', objects=['dhcp-vrf:vrf'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-vlan100', objects=['vlan100:vlan'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-vlan200', objects=['vlan200:vlan'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-svi100', objects=['svi100:interface'], resource_deps=['dhcprelay-vlan100'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-svi200', objects=['svi200:interface'], resource_deps=['dhcprelay-vlan200'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-relay100', objects=['dhcprelay100:dhcprelay'], resource_deps=['dhcprelay-svi100'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
+k8s_resource(new_name='dhcprelay-relay200', objects=['dhcprelay200:dhcprelay'], resource_deps=['dhcprelay-svi200', 'dhcprelay-vrf'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
 
 k8s_yaml('./config/samples/v1alpha1_ethernetsegment.yaml')
 k8s_resource(new_name='ethernetsegment-sample', objects=['ethernetsegment-sample:ethernetsegment'], resource_deps=['po10'], trigger_mode=TRIGGER_MODE_MANUAL, auto_init=False, labels=['samples'])
