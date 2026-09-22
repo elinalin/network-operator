@@ -189,7 +189,7 @@ func Delete() script.Cmd {
 				return nil, fmt.Errorf("decoded object is not a client.Object: %T", obj)
 			}
 			res.SetNamespace(testNamespace)
-			if err := k8sClient.Delete(s.Context(), res); client.IgnoreNotFound(err) != nil {
+			if err := client.IgnoreNotFound(k8sClient.Delete(s.Context(), res)); err != nil {
 				return nil, fmt.Errorf("failed to delete resource: %w", err)
 			}
 			wait := func(s *script.State) (stdout, stderr string, reterr error) {
@@ -302,7 +302,7 @@ func SetupK8s(t *testing.T) {
 // previous interrupted run, it is deleted first so the test starts from a clean state.
 func Create(t *testing.T, obj client.Object) {
 	t.Helper()
-	if err := k8sClient.Delete(t.Context(), obj); client.IgnoreNotFound(err) != nil {
+	if err := client.IgnoreNotFound(k8sClient.Delete(t.Context(), obj)); err != nil {
 		t.Fatalf("failed to delete existing %T: %v", obj, err)
 	}
 	if err := k8sClient.Create(t.Context(), obj); err != nil {
@@ -321,7 +321,7 @@ func Create(t *testing.T, obj client.Object) {
 // The Device address field requires IPv4 format, so hostnames like "localhost" must be resolved.
 func ResolveAddr(t *testing.T, host string) string {
 	t.Helper()
-	addrs, err := net.LookupHost(host)
+	addrs, err := (&net.Resolver{}).LookupHost(t.Context(), host)
 	if err != nil {
 		t.Fatalf("failed to resolve host %q: %v", host, err)
 	}
